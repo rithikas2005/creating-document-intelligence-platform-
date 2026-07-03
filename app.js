@@ -4183,6 +4183,93 @@ This is a custom user-uploaded file named **${filename}** with a compressed size
   }
 }
 
+function convertOutputToPlainEnglish(outputStr, baseName) {
+  let cleanStr = outputStr.trim();
+  
+  if (cleanStr.startsWith('{') || cleanStr.startsWith('[')) {
+    try {
+      const data = JSON.parse(cleanStr);
+      let report = `=== DOCINTELLECT AI - INGESTION INSIGHTS REPORT ===\n`;
+      report += `Source Document: ${baseName}\n`;
+      report += `Ingest Date: ${new Date().toLocaleDateString()}\n\n`;
+      
+      report += `=== DOCUMENT TYPE & CLASSIFICATION ===\n`;
+      if (data.document_type) report += `Type: ${data.document_type.toUpperCase()}\n`;
+      if (data.document_category) report += `Category: ${data.document_category.toUpperCase()}\n`;
+      if (data.confidence_score) report += `Ingestion Confidence: ${(data.confidence_score * 100).toFixed(1)}%\n`;
+      
+      if (data.invoice_metadata) {
+        report += `\n=== INVOICE METADATA ===\n`;
+        report += `• Invoice ID: ${data.invoice_metadata.invoice_id || 'N/A'}\n`;
+        report += `• Issue Date: ${data.invoice_metadata.issue_date || 'N/A'}\n`;
+        report += `• Due Date: ${data.invoice_metadata.due_date || 'N/A'}\n`;
+        if (data.invoice_metadata.currency) report += `• Currency: ${data.invoice_metadata.currency}\n`;
+      }
+      
+      if (data.parties) {
+        report += `\n=== PARTIES INVOLVED ===\n`;
+        if (data.parties.issuer) report += `• Issuer: ${data.parties.issuer.company_name || data.parties.issuer.name || 'N/A'}\n`;
+        if (data.parties.recipient) report += `• Recipient: ${data.parties.recipient.company_name || data.parties.recipient.name || 'N/A'} (Address: ${data.parties.recipient.address || 'N/A'})\n`;
+      }
+      
+      if (data.line_items && data.line_items.length > 0) {
+        report += `\n=== EXTRACTED LINE ITEMS ===\n`;
+        data.line_items.forEach(item => {
+          report += `• ${item.description || 'Item'} (Qty: ${item.quantity || 1}, Total Price: $${(item.total_amount || 0).toLocaleString()})\n`;
+        });
+      }
+      
+      if (data.financials) {
+        report += `\n=== FINANCIAL SUMMARY ===\n`;
+        report += `• Subtotal: $${(data.financials.subtotal || 0).toLocaleString()}\n`;
+        report += `• Tax Rate: ${data.financials.tax_rate_percent || 0}%\n`;
+        report += `• Tax Amount: $${(data.financials.tax_amount || 0).toLocaleString()}\n`;
+        report += `• Total Due: $${(data.financials.total_due || 0).toLocaleString()}\n`;
+      }
+      
+      if (data.payment_terms) {
+        report += `\n=== PAYMENT INFORMATION ===\n`;
+        report += `• Terms: ${data.payment_terms.terms || 'N/A'}\n`;
+        report += `• Method: ${data.payment_terms.method || 'N/A'}\n`;
+        report += `• Bank: ${data.payment_terms.routing_bank || 'N/A'}\n`;
+      }
+      
+      if (data.inferred_document_model) {
+        report += `\n=== INFERRED MODEL DETAILS ===\n`;
+        report += `• Document Category: ${data.inferred_document_model.type || 'N/A'}\n`;
+        report += `• Confidence Rating: ${((data.inferred_document_model.confidence_rating || 0.95) * 100).toFixed(1)}%\n`;
+      }
+      
+      return report;
+    } catch(e) {
+      // Fallback
+    }
+  }
+  
+  if (cleanStr.startsWith('<')) {
+    let report = `=== DOCINTELLECT AI - XML CONVERSION REPORT ===\n`;
+    report += `Source Document: ${baseName}\n\n`;
+    report += `=== EXTRACTED INSIGHTS ===\n`;
+    const tagRegex = /<([^>]+)>([^<]+)<\/\1>/g;
+    let match;
+    let found = false;
+    while ((match = tagRegex.exec(cleanStr)) !== null) {
+      report += `• ${match[1].toUpperCase()}: ${match[2].trim()}\n`;
+      found = true;
+    }
+    if (!found) {
+      report += cleanStr.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n').trim();
+    }
+    return report;
+  }
+  
+  return cleanStr
+    .replace(/[{}\"[\\]]/g, '')
+    .replace(/,$/gm, '')
+    .replace(/^\s*:\s*/gm, ': ')
+    .trim();
+}
+
 function downloadStructuredResolution(layoutType) {
   if (!activeModuleId) return;
   
@@ -4356,7 +4443,7 @@ function downloadStructuredResolution(layoutType) {
     } else if (activeModuleId === "contextual_knowledge") {
       fileContent = sample.output;
     } else {
-      fileContent = `DOCINTELLECT AI - LOW RESOLUTION RAW TEXT REPORT\n================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nRaw Extracted Data:\n${sample.output.replace(/[{}\"[\\]]/g, '')}`;
+      fileContent = `DOCINTELLECT AI - LOW RESOLUTION PLAIN ENGLISH REPORT\n=====================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nExtracted Document Hints & Key Points:\n${convertOutputToPlainEnglish(sample.output, sample.name.split('.')[0])}`;
     }
     filename = `docintellect_low_res_${baseName}.txt`;
     mimeType = "text/plain";
@@ -4477,7 +4564,7 @@ async function exportToSystemFiles() {
     fileContent = `Field,Value\nDocument Type,${activeSmartStructType || 'unknown'}\nFile Name,${sample.name}\nExtracted Subject,Custom Document Ingest\nIngest Timestamp,${new Date().toISOString()}\nConfidence,0.954`;
     extension = "csv";
   } else {
-    fileContent = `DOCINTELLECT AI - LOW RESOLUTION RAW TEXT REPORT\n================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nRaw Extracted Data:\n${sample.output.replace(/[{}\"[\\]]/g, '')}`;
+    fileContent = `DOCINTELLECT AI - LOW RESOLUTION PLAIN ENGLISH REPORT\n=====================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nExtracted Document Hints & Key Points:\n${convertOutputToPlainEnglish(sample.output, sample.name.split('.')[0])}`;
     extension = "txt";
   }
 
@@ -4588,7 +4675,7 @@ function exportToDesktop() {
         } else if (resType === "med") {
           fileContent = `Field,Value\nDocument Type,${activeSmartStructType || 'unknown'}\nFile Name,${sample.name}\nExtracted Subject,Custom Document Ingest\nIngest Timestamp,${new Date().toISOString()}\nConfidence,0.954`;
         } else {
-          fileContent = `DOCINTELLECT AI - LOW RESOLUTION RAW TEXT REPORT\n================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nRaw Extracted Data:\n${sample.output.replace(/[{}\"[\\]]/g, '')}`;
+          fileContent = `DOCINTELLECT AI - LOW RESOLUTION PLAIN ENGLISH REPORT\n=====================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nExtracted Document Hints & Key Points:\n${convertOutputToPlainEnglish(sample.output, sample.name.split('.')[0])}`;
         }
         
         const blob = new Blob([fileContent], { type: "application/octet-stream" });
@@ -4760,7 +4847,7 @@ async function exportSemanticToSystemFiles() {
     
     extension = "csv";
   } else {
-    fileContent = `DOCINTELLECT AI - LOW RESOLUTION RAW TEXT REPORT\n================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nRaw Extracted Data:\n${sample.output.replace(/[{}\"[\\]]/g, '')}`;
+    fileContent = `DOCINTELLECT AI - LOW RESOLUTION PLAIN ENGLISH REPORT\n=====================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nExtracted Document Hints & Key Points:\n${convertOutputToPlainEnglish(sample.output, sample.name.split('.')[0])}`;
     extension = "txt";
   }
 
@@ -4891,7 +4978,7 @@ function exportSemanticToDesktop() {
           if (techMatch) fileContent += `TECHNICAL_TERM,"${techMatch[1].replace(/"/g, '""')}"\n`;
           if (bizMatch) fileContent += `BUSINESS_KEYWORD,"${bizMatch[1].replace(/"/g, '""')}"\n`;
         } else {
-          fileContent = `DOCINTELLECT AI - LOW RESOLUTION RAW TEXT REPORT\n================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nRaw Extracted Data:\n${sample.output.replace(/[{}\"[\\]]/g, '')}`;
+          fileContent = `DOCINTELLECT AI - LOW RESOLUTION PLAIN ENGLISH REPORT\n=====================================================\nSource File: ${sample.name}\nIngest Date: ${new Date().toLocaleDateString()}\n\nExtracted Document Hints & Key Points:\n${convertOutputToPlainEnglish(sample.output, sample.name.split('.')[0])}`;
         }
         
         const blob = new Blob([fileContent], { type: "application/octet-stream" });
