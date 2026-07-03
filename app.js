@@ -492,6 +492,7 @@ let currentTextExtractFile = null;
 let activeSemanticCategory = null;
 let activeSemanticType = null;
 let currentSemanticFile = null;
+let currentSemanticAnalysisResult = null;
 
 // Document Data Mining State Variables
 let activeDataMiningSilo = null;
@@ -690,6 +691,12 @@ function setupWorkspaceModal(moduleId) {
       exportBtn.style.display = "none";
       exportBtn.disabled = true;
     }
+
+    currentSemanticAnalysisResult = null;
+    const queryContainer = document.getElementById("semantic-interactive-query-container");
+    if (queryContainer) queryContainer.style.display = "none";
+    const queryInput = document.getElementById("semantic-custom-query-input");
+    if (queryInput) queryInput.value = "";
 
     // Reset Semantic pipeline stage cards
     for (let i = 1; i <= 4; i++) {
@@ -2412,10 +2419,16 @@ Key Concepts & Keywords:
 - ${result.bizKeywords.join(', ')}
 - ${result.techTerms.join(', ')}`;
 
+  currentSemanticAnalysisResult = result;
+
   outputContent.innerHTML = escapeHTML(report);
   outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Completed`;
   runBtn.disabled = false;
   if (downloadBtn) downloadBtn.disabled = false;
+
+  // Show the interactive query container
+  const queryContainer = document.getElementById("semantic-interactive-query-container");
+  if (queryContainer) queryContainer.style.display = "flex";
   
   MOCK_DATA.semantic_classification.samples[99] = {
     name: currentSemanticFile.name,
@@ -2426,6 +2439,85 @@ Key Concepts & Keywords:
   
   logSystemEvent("CLASSIFIER", `Successfully extracted key points for "${currentSemanticFile.name}"`);
   updateDashboardKPIs();
+}
+
+function submitSemanticCustomQuery() {
+  const input = document.getElementById("semantic-custom-query-input");
+  const outputContent = document.getElementById("semantic-output-content");
+  
+  if (!input || !outputContent || !currentSemanticAnalysisResult) return;
+  
+  const query = input.value.trim();
+  if (query.length === 0) return;
+  
+  // Log event
+  logSystemEvent("CLASSIFIER", `User executed query: "${query}" on "${currentSemanticFile.name}"`);
+  
+  // Set console status to running
+  const outputStatus = document.getElementById("semantic-output-status");
+  if (outputStatus) {
+    outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber);"></span> Processing Command...`;
+  }
+  
+  // Display a temporary thinking loader
+  outputContent.innerHTML = `// Running Interactive Ingestion Agent...\n// Query: "${query}"\n// Analyzing document context...\n\nProcessing...`;
+  
+  setTimeout(() => {
+    const qLower = query.toLowerCase();
+    let response = "";
+    
+    if (qLower.includes("name") || qLower.includes("people") || qLower.includes("person") || qLower.includes("who")) {
+      response = `=== EXTRACTED NAMES / PEOPLE ===\n`;
+      if (currentSemanticAnalysisResult.names && currentSemanticAnalysisResult.names.length > 0 && currentSemanticAnalysisResult.names[0] !== "Corporate Signatory") {
+        response += currentSemanticAnalysisResult.names.map(n => `• ${n}`).join('\n');
+      } else {
+        response += `• Corporate Signatory (Default Signee)\n• Primary Investigator\n• Executive Sponsor`;
+      }
+    } else if (qLower.includes("date") || qLower.includes("time") || qLower.includes("when")) {
+      response = `=== EXTRACTED DATES ===\n`;
+      response += currentSemanticAnalysisResult.dates.map(d => `• ${d}`).join('\n');
+    } else if (qLower.includes("org") || qLower.includes("company") || qLower.includes("companies") || qLower.includes("institution") || qLower.includes("employer")) {
+      response = `=== EXTRACTED ORGANIZATIONS ===\n`;
+      response += currentSemanticAnalysisResult.organizations.map(o => `• ${o}`).join('\n');
+    } else if (qLower.includes("money") || qLower.includes("cost") || qLower.includes("price") || qLower.includes("fee") || qLower.includes("amount") || qLower.includes("financial") || qLower.includes("value") || qLower.includes("limit")) {
+      response = `=== FINANCIAL VALUES & MONETARY VALUES ===\n`;
+      response += currentSemanticAnalysisResult.financials.map(f => `• ${f}`).join('\n');
+    } else if (qLower.includes("location") || qLower.includes("city") || qLower.includes("where") || qLower.includes("address")) {
+      response = `=== EXTRACTED LOCATIONS ===\n`;
+      response += currentSemanticAnalysisResult.locations.map(l => `• ${l}`).join('\n');
+    } else if (qLower.includes("summary") || qLower.includes("summarize") || qLower.includes("brief")) {
+      response = `=== COMPREHENSIVE COGNITIVE SUMMARY ===\n`;
+      response += currentSemanticAnalysisResult.summary;
+    } else if (qLower.includes("keyword") || qLower.includes("concept") || qLower.includes("term")) {
+      response = `=== EXTRACTED KEYWORDS & CONCEPTS ===\n`;
+      response += `Business Keywords:\n` + currentSemanticAnalysisResult.bizKeywords.map(k => `  • ${k}`).join('\n');
+      response += `\n\nTechnical Terms:\n` + currentSemanticAnalysisResult.techTerms.map(t => `  • ${t}`).join('\n');
+    } else {
+      // Smart generalized fallback response
+      response = `=== INTERACTIVE DOCUMENT AGENT RESPONSE ===
+File analyzed: ${currentSemanticFile.name}
+Operation Executed: "${query}"
+
+Result details:
+Based on the semantic analysis of the document content, the request was processed successfully. 
+The document is a ${currentSemanticAnalysisResult.primaryClass.toUpperCase()} (Confidence: ${currentSemanticAnalysisResult.confidence.toFixed(1)}%) associated with ${currentSemanticAnalysisResult.organizations[0]}.
+
+General Document Scope:
+${currentSemanticAnalysisResult.keySentences.map(s => `• ${s}`).join('\n')}`;
+    }
+    
+    outputContent.innerHTML = escapeHTML(response);
+    
+    if (outputStatus) {
+      outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Response Rendered`;
+    }
+    
+    // Clear query input field
+    input.value = "";
+    
+    // Update sample cache to retain query state
+    MOCK_DATA.semantic_classification.samples[99].output = response;
+  }, 1000);
 }
 
 // --- SMARTSTRUCT SPECIALIZED ACTIONS ---
@@ -3981,6 +4073,16 @@ document.addEventListener("DOMContentLoaded", () => {
     logSystemEvent("DATABASE", "Semantic vector segment indexes connected successfully.");
     logSystemEvent("OCR_ENGINE", "Layout-aware parsing engine fully initialized (GPU enabled).");
     logSystemEvent("SMARTSTRUCT", "LLM JSON schema parsing models loaded into active memory.");
+  }
+  // 6. Bind Semantic Custom Query Input Enter Key
+  const semanticQueryInput = document.getElementById("semantic-custom-query-input");
+  if (semanticQueryInput) {
+    semanticQueryInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitSemanticCustomQuery();
+      }
+    });
   }
 });
 

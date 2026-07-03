@@ -1037,6 +1037,18 @@
                 </div>
                 <pre class="smartstruct-output-content" id="semantic-output-content" style="max-height: 290px; height: 260px; margin-bottom: 0;">// Upload a valid document to begin semantic classification and cognitive summary extraction.</pre>
               </div>
+
+              <!-- Custom Interactive Command/Query Bar -->
+              <div id="semantic-interactive-query-container" style="display: none; flex-direction: column; gap: 8px; margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px; width: 100%;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Interactive Document Agent (Ask questions or give commands)</div>
+                <div style="display: flex; gap: 10px; width: 100%;">
+                  <input type="text" id="semantic-custom-query-input" placeholder="e.g., 'Extract names', 'Find dates', 'What is the sum?'..." style="flex-grow: 1; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(15,23,42,0.6); color: var(--text-primary); font-size: 0.85rem; font-family: 'Plus Jakarta Sans', sans-serif;">
+                  <button class="btn btn-primary" onclick="submitSemanticCustomQuery()" style="padding: 10px 20px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    <span>Execute</span>
+                  </button>
+                </div>
+              </div>
               
               <!-- Download Resolution Panel for Semantic Classification -->
               <div class="resolution-panel" id="semantic-resolution-panel">
