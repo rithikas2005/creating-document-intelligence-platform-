@@ -2401,26 +2401,16 @@ function renderSemanticAnalysisReport(result) {
   
   if (!outputContent || !outputStatus || !runBtn) return;
   
-  let report = `=== SEMANTIC DOCUMENT CLASSIFICATION REPORT ===
-Primary Classification:
-- ${result.primaryClass.toUpperCase()} (Confidence: ${result.confidence.toFixed(1)}%)
+  let report = `=== EXTRACTED KEY POINTS & IMPORTANT SENTENCES ===
+Document: ${currentSemanticFile.name}
+Ingestion Type: ${result.primaryClass.toUpperCase()} (Confidence: ${result.confidence.toFixed(1)}%)
 
-Extracted Named Entities:
-- Organizations: ${result.organizations.join(', ')}
-- Names: ${result.names.join(', ')}
-- Dates: ${result.dates.join(', ')}
-- Locations: ${result.locations.join(', ')}
-- Financial Values: ${result.financials.join(', ')}
+Key Points Extracted:
+${result.keySentences.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}
 
-Extracted Concepts:
-- Technical Terms: ${result.techTerms.join(', ')}
-- Business Keywords: ${result.bizKeywords.join(', ')}
-
-Key Sentences & Points:
-${result.keySentences.map((s, idx) => `${idx + 1}. "${s}"`).join('\n')}
-
-Comprehensive Cognitive Summary:
-${result.summary}`;
+Key Concepts & Keywords:
+- ${result.bizKeywords.join(', ')}
+- ${result.techTerms.join(', ')}`;
 
   outputContent.innerHTML = escapeHTML(report);
   outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Completed`;
@@ -2434,7 +2424,7 @@ ${result.summary}`;
   };
   activeSampleIndex = 99;
   
-  logSystemEvent("CLASSIFIER", `Successfully classified "${currentSemanticFile.name}" as ${result.primaryClass} (${result.confidence.toFixed(1)}% confidence)`);
+  logSystemEvent("CLASSIFIER", `Successfully extracted key points for "${currentSemanticFile.name}"`);
   updateDashboardKPIs();
 }
 
