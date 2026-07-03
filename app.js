@@ -1186,7 +1186,8 @@ function simulateTextExtractPipeline() {
               cleanedText = `// OCR Completed, but no readable characters were detected.\n// Make sure the image has high-contrast, clear English text.`;
             }
             
-            let ocrReport = `=== REAL OCR LAYOUT-AWARE TEXT EXTRACTION ===\n`;
+            let ocrReport = `=== TEXT EXTRACTION OCR REPORT ===\n`;
+            ocrReport += `Text Extraction OCR: Advanced, layout-aware Optical Character Recognition (OCR) designed for low-resolution receipts, scans, tables, and multi-language workflows. Provide the info:\n\n`;
             ocrReport += `[Confidence Level: 94.2%]\n`;
             ocrReport += `[Source File: ${currentTextExtractFile.name}]\n\n`;
             ocrReport += cleanedText;
@@ -1246,7 +1247,9 @@ function runSimulatedOCR(outputContent, outputStatus, runBtn, downloadBtn, setSt
           const formatSel = document.getElementById("textextract-output-select").value || "txt";
           const inputSel = document.getElementById("textextract-input-select").value || "pdf";
           
-          finalOutput = `=== OCR LAYOUT-AWARE TEXT EXTRACTION ===
+          finalOutput = `=== TEXT EXTRACTION OCR REPORT ===
+Text Extraction OCR: Advanced, layout-aware Optical Character Recognition (OCR) designed for low-resolution receipts, scans, tables, and multi-language workflows. Provide the info:
+
 [Confidence Level: 95.8%]
 [Source File: ${sampleName}]
 [Detected Format: ${inputSel.toUpperCase()}]
@@ -2420,7 +2423,9 @@ function renderSemanticAnalysisReport(result) {
   
   if (!outputContent || !outputStatus || !runBtn) return;
   
-  let report = `=== EXTRACTED KEY POINTS & IMPORTANT SENTENCES ===
+  let report = `=== SEMANTIC CLASSIFICATION REPORT ===
+Semantic Classifier: Automatically categorizes high-volume incoming streams based on context, legal risk, and meaning, routing files to specific system pipelines. It should provide accordingly.
+
 Document: ${currentSemanticFile.name}
 Ingestion Type: ${result.primaryClass.toUpperCase()} (Confidence: ${result.confidence.toFixed(1)}%)
 
@@ -2849,179 +2854,40 @@ function simulateSmartStructPipeline() {
     
     // Switch from terminal log to structured output payload
     setTimeout(() => {
-      let mockData = "";
+      const fileName = currentSmartStructFile ? currentSmartStructFile.name : 'Stark_Invoice.pdf';
+      const fileFormat = (activeSmartStructType || 'pdf').toUpperCase();
       
-      switch(activeSmartStructType) {
-        case "pdf":
-        case "word":
-        case "scanned":
-          mockData = `{
-  "$schema": "https://json-schema.org/v12/schema",
-  "document_category": "${activeSmartStructCategory === 'revision' ? 'unstructured_revision' : 'structured_intake'}",
-  "source_format": "${activeSmartStructType.toUpperCase()}",
-  "file_metadata": {
-    "name": "${currentSmartStructFile.name}",
-    "size_bytes": ${currentSmartStructFile.size},
-    "type_validation": "verified"
-  },
-  "inferred_document_model": {
-    "type": "corporate_agreement",
-    "parties": [
-      { "role": "issuer", "name": "Global Tech Corp" },
-      { "role": "recipient", "name": "Apex Consulting Group" }
-    ],
-    "clauses_detected": 14,
-    "confidence_rating": 0.962
-  },
-  "extraction_summary": {
-    "paragraphs_processed": 42,
-    "tables_extracted": 1,
-    "entities_found": { "organizations": 2, "dates": 4, "currency_monetary": 2 }
-  }
-}`;
-          break;
-        case "txt":
-          mockData = `{
-  "document_category": "unstructured_revision",
-  "source_format": "PLAIN_TEXT",
-  "character_encoding": "UTF-8",
-  "lexical_analysis": {
-    "total_words": 284,
-    "total_sentences": 18,
-    "readability_index": "Flesch-Kincaid Grade 10.4"
-  },
-  "semantic_density": {
-    "tokens": 418,
-    "vocabulary_richness_ratio": 0.654
-  },
-  "inferred_schema": {
-    "document_title": "Notes_June_2026",
-    "paragraphs": 3
-  }
-}`;
-          break;
-        case "pptx":
-          mockData = `{
-  "document_category": "unstructured_revision",
-  "source_format": "POWERPOINT",
-  "presentation_details": {
-    "slide_count": 8,
-    "aspect_ratio": "16:9",
-    "theme_detected": "Dark Neon Corporates"
-  },
-  "slides_schema_parsing": [
-    { "slide_number": 1, "layout": "title_slide", "title": "Enterprise Document Intelligence Platform" },
-    { "slide_number": 2, "layout": "content_list", "title": "Core AI Cognitive Engines" },
-    { "slide_number": 3, "layout": "comparison", "title": "Structured vs Unstructured Ingestion Pipelines" }
-  ]
-}`;
-          break;
-        case "images":
-          mockData = `{
-  "document_category": "unstructured_revision",
-  "source_format": "IMAGE_OCR",
-  "image_dimensions": "3200x2400",
-  "color_depth_bits": 24,
-  "visual_blocks_detected": [
-    { "type": "header_block", "coordinates": { "x": 120, "y": 140, "w": 2960, "h": 120 }, "text": "QUARTERLY BUSINESS INGEST REPORT" },
-    { "type": "data_table", "coordinates": { "x": 120, "y": 300, "w": 2960, "h": 1800 }, "columns": ["Q1_Sales", "Q2_Sales", "Variance"] }
-  ],
-  "ocr_text_confidence": 0.942
-}`;
-          break;
-        case "csv":
-          mockData = `{
-  "document_category": "structured_intake",
-  "source_format": "CSV_TABLE",
-  "parser_settings": { "delimiter": ",", "has_headers": true },
-  "table_schema": {
-    "column_count": 5,
-    "schema_mapping": {
-      "transaction_id": "STRING (Identifier)",
-      "date": "DATETIME",
-      "customer_email": "STRING (Email)",
-      "amount": "DECIMAL",
-      "status": "STRING"
-    }
-  },
-  "payload_statistics": {
-    "total_records": 1500,
-    "corrupted_rows_omitted": 0,
-    "data_loss_percentage": 0.0
-  }
-}`;
-          break;
-        case "excel":
-          mockData = `{
-  "document_category": "structured_intake",
-  "source_format": "EXCEL_WORKBOOK",
-  "workbook_properties": {
-    "active_sheet": "Revenue_Summary",
-    "total_sheets": 3,
-    "sheets_list": ["Revenue_Summary", "Operating_Costs", "System_Logs"]
-  },
-  "revenue_summary_schema": {
-    "dimensions": "A1:F800",
-    "headers": ["Quarter", "Region", "Gross_Revenue", "Direct_Costs", "Net_Profit"],
-    "aggregate_sums": { "gross_revenue_total": 9184500.00, "net_profit_total": 2451000.00 }
-  }
-}`;
-          break;
-        case "db":
-          mockData = `{
-  "document_category": "structured_intake",
-  "source_format": "DATABASE_EXPORT",
-  "database_type": "PostgreSQL",
-  "tables_extracted": {
-    "users": { "row_count": 14820, "primary_key": "id", "foreign_keys": [] },
-    "subscriptions": { "row_count": 9241, "primary_key": "id", "foreign_keys": ["user_id -> users.id"] }
-  },
-  "erd_integrity_score": 1.0,
-  "inferred_relationships": "one-to-many: users -> subscriptions"
-}`;
-          break;
-        case "json":
-          mockData = `{
-  "document_category": "structured_intake",
-  "source_format": "JSON_SCHEMA",
-  "schema_compliance": "Strict Draft-12",
-  "payload_metrics": {
-    "root_node_type": "object",
-    "nesting_depth_limit": 5,
-    "cardinality": 42
-  },
-  "top_level_keys": ["meta", "system_config", "telemetry_records"]
-}`;
-          break;
-        case "xml":
-          mockData = `{
-  "document_category": "structured_intake",
-  "source_format": "XML_DOCUMENT",
-  "soap_namespaces": ["http://schemas.xmlsoap.org/soap/envelope/"],
-  "root_tag": "SOAP-ENV:Envelope",
-  "converted_json_equivalent": {
-    "Envelope": {
-      "Header": { "SecurityToken": "token-920-f" },
-      "Body": { "ProcessDocumentRequest": { "DocumentId": "doc-894", "Status": "active" } }
-    }
-  }
-}`;
-          break;
-        default:
-          mockData = `{ "status": "processed", "file": "${currentSmartStructFile.name}" }`;
-      }
+      let mockData = `=== SMARTSTRUCT AI EXTRACTION REPORT ===
+SmartStruct AI: Converts raw, unstructured business documents (contracts, forms, emails) into fully structured, schema-compliant JSON or XML files instantly. Only tells the important points into it.
+
+Extracted Document Metadata & Key Hints:
+- File Name: ${fileName}
+- Source Format: ${fileFormat}
+- Document Category: ${activeSmartStructCategory === 'revision' ? 'Unstructured Document Revision' : 'Structured Document Intake'}
+- Ingestion Confidence: 98.4%
+- Ingest Date: ${new Date().toLocaleDateString()}
+
+Important Points & Details Detected:
+1. Document identified as an active Corporate Agreement.
+2. Signees/Parties involved: Global Tech Corp (Issuer) and Apex Consulting Group (Recipient).
+3. Text paragraphs processed: 42, tables extracted: 1.
+4. Total clauses detected: 14 distinct clauses with a confidence rating of 96.2%.
+5. Financial aggregate: Subtotal of $925,000.00, Tax amount of $76,312.50, and Total Due of $1,001,312.50.`;
       
-      outputContent.innerHTML = syntaxHighlightJSON(mockData);
+      outputContent.innerHTML = escapeHTML(mockData);
       outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Completed`;
       runBtn.disabled = false;
       
-      // Enable the download button
       if (downloadBtn) downloadBtn.disabled = false;
       
-      // Add to dashboard activity log
-      logSystemEvent("SMARTSTRUCT", `Successfully parsed schema-compliant model for "${currentSmartStructFile.name}" (10.00s)`);
+      MOCK_DATA.smartstruct.samples[99] = {
+        name: fileName,
+        content: `[User Uploaded SmartStruct File: ${fileName}]`,
+        output: mockData
+      };
+      activeSampleIndex = 99;
       
-      // Update dashboard KPIs
+      logSystemEvent("SMARTSTRUCT", `Successfully parsed schema-compliant model for "${fileName}" (10.00s)`);
       updateDashboardKPIs();
     }, 500);
   }, 10000);
