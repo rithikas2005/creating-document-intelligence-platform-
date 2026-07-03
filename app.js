@@ -1009,6 +1009,10 @@ function validateTextExtractFile() {
         isAllowed = (ext === 'pdf');
         allowedDesc = "Scanned PDF (.pdf)";
         break;
+      case "word":
+        isAllowed = ['docx', 'doc'].includes(ext);
+        allowedDesc = "Word Document (.docx, .doc)";
+        break;
       case "image":
         isAllowed = ['png', 'jpg', 'jpeg', 'tiff', 'bmp'].includes(ext);
         allowedDesc = "Image (.jpg, .jpeg, .png, .tiff)";
@@ -1023,6 +1027,10 @@ function validateTextExtractFile() {
       case "pdf_searchable":
         isAllowed = ['pdf', 'png', 'jpg', 'jpeg', 'tiff'].includes(ext);
         allowedDesc = "Source for Searchable PDF (PDF/Images)";
+        break;
+      case "word":
+        isAllowed = ['docx', 'doc', 'pdf', 'png', 'jpg', 'jpeg', 'txt'].includes(ext);
+        allowedDesc = "Source for Word document (.docx, .doc)";
         break;
       case "txt":
         isAllowed = ['txt', 'pdf', 'png', 'jpg', 'jpeg', 'docx', 'doc'].includes(ext);
@@ -1150,6 +1158,7 @@ function simulateTextExtractPipeline() {
       
       if (hasRealFile && isImage && typeof Tesseract !== 'undefined') {
         outputContent.innerHTML += `\n[TESSERACT] Ingesting real image file: ${currentTextExtractFile.name}...`;
+        outputContent.innerHTML += `\n[TESSERACT] Enforcing Western Roman character set: English language mode (eng)...`;
         
         Tesseract.recognize(
           currentTextExtractFile,
@@ -1182,6 +1191,7 @@ function simulateTextExtractPipeline() {
             ocrReport += `[Source File: ${currentTextExtractFile.name}]\n\n`;
             ocrReport += cleanedText;
             ocrReport += `\n\n=== METADATA EXTRACTED ===\n`;
+            ocrReport += `Language Mode: English (eng)\n`;
             ocrReport += `Orientation: Autocorrected\n`;
             ocrReport += `Engine: Tesseract.js (Client-Side AI)`;
             
@@ -1222,6 +1232,7 @@ function runSimulatedOCR(outputContent, outputStatus, runBtn, downloadBtn, setSt
       
       setStageState(3, "completed", "Completed");
       setStageState(4, "active", "Extracting...");
+      outputContent.innerHTML += `\n[TESSERACT] Enforcing Western Roman character set: English language mode (eng)...`;
       outputContent.innerHTML += `\n[STAGE 4] Compiling text streams into structured output format...`;
       
       setTimeout(() => {
@@ -1246,6 +1257,7 @@ Line 03: [X: 12, Y: 70, W: 420, H: 18]   Processed custom stream payload of ${(c
 Line 04: [X: 12, Y: 95, W: 300, H: 15]   Layout bounding boxes successfully mapped.
 
 === METADATA EXTRACTED ===
+Language Mode: English (eng)
 Target Format: ${formatSel.toUpperCase()}
 Page Count: 1
 Tilt Angle: 0.0 degrees (Autocorrected)
@@ -2643,6 +2655,10 @@ function validateSmartStructFile() {
     }
   } else if (activeSmartStructCategory === "intake") {
     switch(activeSmartStructType) {
+      case "pdf":
+        isAllowed = (ext === 'pdf');
+        allowedDesc = "PDF Document (.pdf)";
+        break;
       case "csv":
         isAllowed = (ext === 'csv');
         allowedDesc = "CSV File (.csv)";

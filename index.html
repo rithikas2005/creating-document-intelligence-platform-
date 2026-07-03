@@ -579,6 +579,7 @@
                 <label class="smartstruct-select-label">Structured Documents</label>
                 <select id="smartstruct-intake-select" class="smartstruct-select" onchange="handleSmartStructTypeChange('intake')">
                   <option value="" disabled selected>Select Format...</option>
+                  <option value="pdf">PDF Documents (.pdf)</option>
                   <option value="csv">CSV (.csv)</option>
                   <option value="excel">Excel (.xlsx, .xls)</option>
                   <option value="word">Word Documents (.docx, .doc)</option>
@@ -736,6 +737,7 @@
                 <select id="textextract-input-select" class="smartstruct-select" onchange="handleTextExtractTypeChange('input')">
                   <option value="" disabled selected>Select Format...</option>
                   <option value="pdf">Scanned PDF</option>
+                  <option value="word">Word Documents (.docx, .doc)</option>
                   <option value="image">Image (JPG, PNG)</option>
                   <option value="handwritten">Handwritten or printed document</option>
                 </select>
@@ -758,6 +760,7 @@
                 <select id="textextract-output-select" class="smartstruct-select" onchange="handleTextExtractTypeChange('output')">
                   <option value="" disabled selected>Select Format...</option>
                   <option value="pdf_searchable">Searchable PDF</option>
+                  <option value="word">Word Document (.docx)</option>
                   <option value="txt">TXT file</option>
                   <option value="json">JSON</option>
                   <option value="db">Structured database records</option>
