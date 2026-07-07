@@ -1108,6 +1108,65 @@ function validateTextExtractFile() {
   }
 }
 
+async function runBackendOCR(file, setStageState, outputContent, outputStatus, runBtn, downloadBtn) {
+  setStageState(1, "active", "Preprocessing...");
+  outputContent.innerHTML = `// Routing to Local AI Backend...\n[STAGE 1] Preprocessing uploaded file on server...`;
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/ocr", {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+    const data = await res.json();
+    
+    setStageState(1, "completed", "Completed");
+    setStageState(2, "active", "Detecting...");
+    outputContent.innerHTML += `\n[STAGE 2] Bounding box localization resolved by EasyOCR...`;
+    
+    setTimeout(() => {
+      setStageState(2, "completed", "Completed");
+      setStageState(3, "active", "Recognizing...");
+      outputContent.innerHTML += `\n[STAGE 3] OCR Recognition completed successfully...`;
+      
+      setTimeout(() => {
+        setStageState(3, "completed", "Completed");
+        setStageState(4, "active", "Extracting...");
+        outputContent.innerHTML += `\n[STAGE 4] Recompiling Western Roman character streams...`;
+        
+        setTimeout(() => {
+          setStageState(4, "completed", "Completed");
+          outputContent.innerHTML = escapeHTML(data.report);
+          outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Completed`;
+          runBtn.disabled = false;
+          if (downloadBtn) downloadBtn.disabled = false;
+          
+          MOCK_DATA.text_extraction.samples[99] = {
+            name: file.name,
+            content: `[User Image Upload: ${file.name}]`,
+            output: data.report
+          };
+          activeSampleIndex = 99;
+          
+          logSystemEvent("OCR_ENGINE", `Real backend EasyOCR executed successfully for "${file.name}"`);
+          updateDashboardKPIs();
+        }, 500);
+      }, 500);
+    }, 500);
+    
+  } catch (e) {
+    console.error(e);
+    outputContent.innerHTML += `\n[ERROR] Backend OCR failed: ${e.message}. Falling back to simulation...`;
+    setTimeout(() => {
+      runSimulatedOCR(outputContent, outputStatus, runBtn, downloadBtn, setStageState);
+    }, 1000);
+  }
+}
+
 function simulateTextExtractPipeline() {
   const outputContent = document.getElementById("textextract-output-content");
   const outputStatus = document.getElementById("textextract-output-status");
@@ -1120,7 +1179,6 @@ function simulateTextExtractPipeline() {
   if (downloadBtn) downloadBtn.disabled = true;
   outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber);"></span> Processing...`;
   
-  // Reset all stages to idle
   const setStageState = (stageNum, state, statusTextMsg) => {
     const stageCard = document.getElementById(`ocr-stage-${stageNum}`);
     if (!stageCard) return;
@@ -1128,6 +1186,11 @@ function simulateTextExtractPipeline() {
     const statusText = stageCard.querySelector(".ocr-status-text");
     if (statusText) statusText.innerText = statusTextMsg;
   };
+  
+  if (isBackendConnected && currentTextExtractFile) {
+    runBackendOCR(currentTextExtractFile, setStageState, outputContent, outputStatus, runBtn, downloadBtn);
+    return;
+  }
   
   for (let i = 1; i <= 4; i++) {
     setStageState(i, "", "Idle");
@@ -2030,7 +2093,53 @@ function validateSemanticFile() {
   }, 80);
 }
 
-function simulateSemanticPipeline() {
+async function runBackendSemantic(file, setStageState, outputContent, outputStatus, runBtn, downloadBtn) {
+  setStageState(1, "active", "Tokenizing...");
+  outputContent.innerHTML = `// Routing to Local AI Backend...\n[STAGE 1] Running Lexical syntax analysis & tokenization on server...`;
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/semantic", {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+    const data = await res.json();
+    
+    setStageState(1, "completed", "Completed");
+    setStageState(2, "active", "Extracting...");
+    outputContent.innerHTML += `\n[STAGE 2] Entity extraction resolved by backend...`;
+    
+    setTimeout(() => {
+      setStageState(2, "completed", "Completed");
+      setStageState(3, "active", "Classifying...");
+      outputContent.innerHTML += `\n[STAGE 3] Performing Document Classification on server...`;
+      
+      setTimeout(() => {
+        setStageState(3, "completed", "Completed");
+        setStageState(4, "active", "Summarizing...");
+        outputContent.innerHTML += `\n[STAGE 4] Compiling results...`;
+        
+        setTimeout(() => {
+          setStageState(4, "completed", "Completed");
+          renderSemanticAnalysisReport(data);
+        }, 500);
+      }, 500);
+    }, 500);
+    
+  } catch (e) {
+    console.error(e);
+    outputContent.innerHTML += `\n[ERROR] Backend Semantic classification failed: ${e.message}. Falling back to simulation...`;
+    setTimeout(() => {
+      simulateSemanticPipeline(true);
+    }, 1000);
+  }
+}
+
+function simulateSemanticPipeline(skipBackend = false) {
   const outputContent = document.getElementById("semantic-output-content");
   const outputStatus = document.getElementById("semantic-output-status");
   const runBtn = document.getElementById("semantic-run-btn");
@@ -2056,6 +2165,11 @@ function simulateSemanticPipeline() {
     const statusText = stageCard.querySelector(".ocr-status-text");
     if (statusText) statusText.innerText = statusTextMsg;
   };
+  
+  if (!skipBackend && isBackendConnected && currentSemanticFile) {
+    runBackendSemantic(currentSemanticFile, setStageState, outputContent, outputStatus, runBtn, downloadBtn);
+    return;
+  }
   
   for (let i = 1; i <= 4; i++) {
     setStageState(i, "", "Idle");
@@ -2751,7 +2865,73 @@ function updateSmartStructStageUI(stageNum, state) {
   }
 }
 
-function simulateSmartStructPipeline() {
+async function runBackendSmartStruct(file, category, type, appendLog, outputContent, outputStatus, runBtn, downloadBtn) {
+  updateSmartStructStageUI(1, "active");
+  appendLog("[SYSTEM] Initiating real backend SmartStruct schema parsing pipeline...");
+  appendLog("[STAGE 1] Uploading document and starting OCR processing on server...");
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("category", category);
+  formData.append("format_type", type);
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/smartstruct", {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+    const data = await res.json();
+    
+    updateSmartStructStageUI(1, "completed");
+    updateSmartStructStageUI(2, "active");
+    appendLog("[STAGE 2] Document structure and text layout segments resolved...");
+    
+    setTimeout(() => {
+      updateSmartStructStageUI(2, "completed");
+      updateSmartStructStageUI(3, "completed");
+      updateSmartStructStageUI(4, "active");
+      appendLog("[STAGE 3] Named Entity Recognition completed...");
+      appendLog("[STAGE 4] Mapped key points and attributes on server...");
+      
+      setTimeout(() => {
+        updateSmartStructStageUI(4, "completed");
+        updateSmartStructStageUI(5, "completed");
+        updateSmartStructStageUI(6, "active");
+        appendLog("[STAGE 5] Large Language Models (LLMs) compliant schema validation completed...");
+        appendLog("[STAGE 6] Finalizing output generation...");
+        
+        setTimeout(() => {
+          updateSmartStructStageUI(6, "completed");
+          outputContent.textContent = data.report;
+          outputStatus.innerHTML = `<span class="badge-pulse" style="background-color: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span> Completed`;
+          runBtn.disabled = false;
+          if (downloadBtn) downloadBtn.disabled = false;
+          
+          MOCK_DATA.smartstruct.samples[99] = {
+            name: file.name,
+            content: `[User Uploaded SmartStruct File: ${file.name}]`,
+            output: data.report
+          };
+          activeSampleIndex = 99;
+          
+          logSystemEvent("SMARTSTRUCT", `Successfully parsed real schema for "${file.name}" (Backend)`);
+          updateDashboardKPIs();
+        }, 500);
+      }, 500);
+    }, 500);
+    
+  } catch (e) {
+    console.error(e);
+    appendLog(`[ERROR] Backend SmartStruct failed: ${e.message}. Falling back to simulation...`);
+    setTimeout(() => {
+      simulateSmartStructPipeline(true);
+    }, 1000);
+  }
+}
+
+function simulateSmartStructPipeline(skipBackend = false) {
   if (!currentSmartStructFile || !activeSmartStructType) return;
   
   const outputContent = document.getElementById("smartstruct-output-content");
@@ -2796,6 +2976,11 @@ function simulateSmartStructPipeline() {
     outputContent.textContent = logText;
     outputContent.scrollTop = outputContent.scrollHeight;
   };
+
+  if (!skipBackend && isBackendConnected && currentSmartStructFile) {
+    runBackendSmartStruct(currentSmartStructFile, activeSmartStructCategory, activeSmartStructType, appendLog, outputContent, outputStatus, runBtn, downloadBtn);
+    return;
+  }
 
   // Phase 1: Start OCR (0s - 1.66s)
   updateSmartStructStageUI(1, "active");
@@ -3923,6 +4108,48 @@ window.addEventListener("click", () => {
   }
 });
 
+let isBackendConnected = false;
+
+async function checkBackendStatus() {
+  const pill = document.getElementById("backend-status-pill");
+  const dot = document.getElementById("backend-status-dot");
+  const text = document.getElementById("backend-status-text");
+  
+  if (!pill || !dot || !text) return;
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/status");
+    if (res.ok) {
+      const data = await res.json();
+      isBackendConnected = (data.status === "connected");
+      
+      // Update UI to Connected (Emerald)
+      pill.style.background = "rgba(16,185,129,0.1)";
+      pill.style.borderColor = "rgba(16,185,129,0.2)";
+      pill.style.color = "var(--accent-emerald)";
+      
+      dot.style.backgroundColor = "var(--accent-emerald)";
+      dot.style.boxShadow = "0 0 8px var(--accent-emerald)";
+      
+      text.innerText = "Backend Connected";
+    } else {
+      throw new Error("Offline");
+    }
+  } catch (e) {
+    isBackendConnected = false;
+    
+    // Update UI to Offline (Rose/Red)
+    pill.style.background = "rgba(244,63,94,0.1)";
+    pill.style.borderColor = "rgba(244,63,94,0.2)";
+    pill.style.color = "var(--accent-rose)";
+    
+    dot.style.backgroundColor = "var(--accent-rose)";
+    dot.style.boxShadow = "0 0 8px var(--accent-rose)";
+    
+    text.innerText = "Backend Offline";
+  }
+}
+
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Check for logged in user
@@ -3966,6 +4193,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // 7. Check backend status and run interval checker
+  checkBackendStatus();
+  setInterval(checkBackendStatus, 10000);
 });
 
 // --- DYNAMIC RESOLUTION DOWNLOAD GENERATOR ---
@@ -5422,7 +5653,77 @@ function validateContextualFile() {
   runBtn.disabled = !(hasFile && hasDomain && hasModel);
 }
 
-function simulateContextualPipeline() {
+function renderBackendRAGIngest(data, queryWrapper, qaDashboard, outputStatus, runBtn, downloadBtn) {
+  currentContextualSummary = data.summary;
+  currentContextualEntities = [];
+  
+  if (data.keywords) {
+    data.keywords.forEach(kw => {
+      currentContextualEntities.push({ type: "Organization", value: kw });
+    });
+  }
+  if (data.technical) {
+    data.technical.forEach(t => {
+      currentContextualEntities.push({ type: "Product/System", value: t });
+    });
+  }
+  
+  const qas = [
+    { q: "What is the summary of this document?", a: data.summary },
+    { q: "What key technical concepts are mentioned?", a: `The document outlines key systems including ${data.technical.join(', ')}.` }
+  ];
+  
+  contextualQAData = qas;
+  renderQASynthesis(qas);
+}
+
+async function runBackendContextualIngest(file, setStageState, qaDashboard, queryWrapper, outputStatus, runBtn, downloadBtn) {
+  setStageState(1, "active", "Chunking...");
+  qaDashboard.innerHTML = `<div style="color: var(--text-secondary); font-size: 0.85rem; font-family: monospace;">// Routing to Local RAG Ingestion Backend...\n[STAGE 1] Ingesting and chunking document on server...</div>`;
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/rag/ingest", {
+      method: "POST",
+      body: formData
+    });
+    
+    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+    const data = await res.json();
+    
+    setStageState(1, "completed", "Completed");
+    setStageState(2, "active", "Embedding...");
+    qaDashboard.innerHTML += `\n[STAGE 2] Generating vector embeddings via SentenceTransformer...`;
+    
+    setTimeout(() => {
+      setStageState(2, "completed", "Completed");
+      setStageState(3, "active", "Indexing...");
+      qaDashboard.innerHTML += `\n[STAGE 3] Indexing embeddings into local FAISS vector database...`;
+      
+      setTimeout(() => {
+        setStageState(3, "completed", "Completed");
+        setStageState(4, "active", "Synthesizing Q&As...");
+        qaDashboard.innerHTML += `\n[STAGE 4] Invoking LLM for summary and entity keywords extraction...`;
+        
+        setTimeout(() => {
+          setStageState(4, "completed", "Completed");
+          renderBackendRAGIngest(data, queryWrapper, qaDashboard, outputStatus, runBtn, downloadBtn);
+        }, 500);
+      }, 500);
+    }, 500);
+    
+  } catch (e) {
+    console.error(e);
+    qaDashboard.innerHTML += `\n[ERROR] Backend RAG ingestion failed: ${e.message}. Falling back to simulation...`;
+    setTimeout(() => {
+      simulateContextualPipeline(true);
+    }, 1000);
+  }
+}
+
+function simulateContextualPipeline(skipBackend = false) {
   const qaDashboard = document.getElementById("contextual-qa-dashboard");
   const queryWrapper = document.getElementById("contextual-query-wrapper");
   const outputStatus = document.getElementById("contextual-output-status");
@@ -5449,6 +5750,11 @@ function simulateContextualPipeline() {
     const statusText = stageCard.querySelector(".ocr-status-text");
     if (statusText) statusText.innerText = statusTextMsg;
   };
+  
+  if (!skipBackend && isBackendConnected && currentContextualFile) {
+    runBackendContextualIngest(currentContextualFile, setStageState, qaDashboard, queryWrapper, outputStatus, runBtn, downloadBtn);
+    return;
+  }
   
   for (let i = 1; i <= 4; i++) {
     setStageState(i, "", "Idle");
@@ -5756,6 +6062,73 @@ function renderQASynthesis(qas) {
   updateDashboardKPIs();
 }
 
+async function runBackendContextualQuery(queryText, qaDashboard) {
+  const queryLoader = document.createElement("div");
+  queryLoader.style.fontSize = "0.8rem";
+  queryLoader.style.color = "var(--accent-amber)";
+  queryLoader.style.fontFamily = "monospace";
+  queryLoader.style.padding = "4px 12px";
+  queryLoader.innerHTML = `// Executing FAISS vector similarity search (cosine distance metric)...`;
+  qaDashboard.appendChild(queryLoader);
+  qaDashboard.scrollTop = qaDashboard.scrollHeight;
+  
+  try {
+    const res = await fetch("http://localhost:8000/api/rag/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: queryText })
+    });
+    
+    if (queryLoader.parentNode) qaDashboard.removeChild(queryLoader);
+    
+    if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+    const data = await res.json();
+    
+    let answerText = data.answer;
+    
+    if (data.keywords) {
+      data.keywords.forEach(word => {
+        if (word.length > 2) {
+          const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp('(?!<span class="keyword-highlight">)(' + escapedWord + ')(?!<\/span>)', 'gi');
+          answerText = answerText.replace(regex, '<span class="keyword-highlight">$1</span>');
+        }
+      });
+    }
+    
+    const idx = qaDashboard.querySelectorAll(".qa-card").length + 1;
+    const card = document.createElement("div");
+    card.className = "qa-card";
+    card.innerHTML = `
+      <div class="qa-question">
+        <span class="qa-question-icon" style="color: var(--accent-emerald);">Q${idx}:</span>
+        <span>${escapeHTML(queryText)}</span>
+      </div>
+      <div class="qa-answer">${answerText}</div>
+    `;
+    
+    qaDashboard.appendChild(card);
+    qaDashboard.scrollTop = qaDashboard.scrollHeight;
+    
+    logSystemEvent("RAG_QUERY", `Custom RAG backend query executed: "${queryText.slice(0, 30)}..."`);
+    
+    const sample = MOCK_DATA.contextual_knowledge.samples[99];
+    if (sample) {
+      const cleanA = answerText.replace(/<\/?[^>]+(>|$)/g, "");
+      sample.output += `Q${idx}: ${queryText}\nA${idx}: ${cleanA}\n\n`;
+    }
+  } catch (e) {
+    console.error(e);
+    if (queryLoader.parentNode) qaDashboard.removeChild(queryLoader);
+    const errCard = document.createElement("div");
+    errCard.style.color = "var(--accent-rose)";
+    errCard.style.fontSize = "0.8rem";
+    errCard.style.padding = "4px 12px";
+    errCard.innerText = `// Backend query failed: ${e.message}`;
+    qaDashboard.appendChild(errCard);
+  }
+}
+
 function handleContextualCustomQuery(event) {
   event.preventDefault();
   
@@ -5769,6 +6142,11 @@ function handleContextualCustomQuery(event) {
   
   // Clear input
   queryInput.value = "";
+  
+  if (isBackendConnected) {
+    runBackendContextualQuery(queryText, qaDashboard);
+    return;
+  }
   
   // Append temporary RAG search message
   const queryLoader = document.createElement("div");

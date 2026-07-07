@@ -25,6 +25,12 @@
         <span>DocIntellect AI</span>
       </div>
       
+      <!-- Backend Status Pill -->
+      <div id="backend-status-pill" class="badge" style="margin-left: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; border-radius: var(--radius-full); background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.2); color: var(--accent-rose); transition: all 0.3s ease;">
+        <span class="badge-pulse" id="backend-status-dot" style="background-color: var(--accent-rose); width: 6px; height: 6px; box-shadow: 0 0 8px var(--accent-rose);"></span>
+        <span id="backend-status-text">Backend Offline</span>
+      </div>
+      
       <ul class="nav-menu">
         <li><a id="nav-features" class="nav-link active" onclick="switchView('home-view')">Features</a></li>
         <li><a id="nav-downloads" class="nav-link" onclick="switchView('downloads-view')">Downloadable Files</a></li>
